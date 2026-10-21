@@ -1,67 +1,28 @@
 package echo.music.iad1tya.utils
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
-class NetworkConnectivityObserver(context: Context) {
-  private val connectivityManager =
-    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+/**
+ * Tidak lagi memantau atau memvalidasi jaringan.
+ * Koneksi selalu dianggap tersedia.
+ * Gangguan jaringan akan ditangani ketika request gagal.
+ */
+class NetworkConnectivityObserver(
+    @Suppress("UNUSED_PARAMETER") context: Context
+) {
+    private val _networkStatus = Channel<Boolean>(Channel.CONFLATED)
 
-  private val _networkStatus = Channel<Boolean>(Channel.CONFLATED)
-  val networkStatus = _networkStatus.receiveAsFlow()
+    val networkStatus = _networkStatus.receiveAsFlow()
 
-  private val networkCallback =
-    object : ConnectivityManager.NetworkCallback() {
-      override fun onAvailable(network: Network) {
+    init {
         _networkStatus.trySend(true)
-      }
-
-      override fun onLost(network: Network) {
-        _networkStatus.trySend(false)
-      }
     }
 
-  init {
-    val request =
-      NetworkRequest.Builder()
-        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-        .build()
-
-    try {
-      connectivityManager.registerNetworkCallback(request, networkCallback)
-    } catch (e: Exception) {
-
-      _networkStatus.trySend(true)
+    fun unregister() {
+        // Tidak ada callback yang perlu dilepas.
     }
 
-    val isInitiallyConnected = isCurrentlyConnected()
-    _networkStatus.trySend(isInitiallyConnected)
-  }
-
-  fun unregister() {
-    connectivityManager.unregisterNetworkCallback(networkCallback)
-  }
-
-  fun isCurrentlyConnected(): Boolean {
-    return try {
-      val activeNetwork = connectivityManager.activeNetwork
-      val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-
-      val hasInternet =
-        networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-
-      val isValidated =
-        networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-
-      hasInternet && isValidated
-    } catch (e: Exception) {
-      false
-    }
-  }
+    fun isCurrentlyConnected(): Boolean = true
 }
